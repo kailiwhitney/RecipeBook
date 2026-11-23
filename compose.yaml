@@ -1,0 +1,48 @@
+# Bring the Recipe Book app up on delamain.
+# Run from this directory:  docker compose up -d --build
+# Then open http://192.168.8.119:8080
+
+services:
+  db:
+    image: mariadb:11
+    container_name: recipebook-db
+    restart: unless-stopped
+    environment:
+      MARIADB_ROOT_PASSWORD: ${RECIPEBOOK_DB_ROOT_PASSWORD}
+      MARIADB_DATABASE: recipe_book_db
+      MARIADB_USER: recipebook
+      MARIADB_PASSWORD: ${RECIPEBOOK_DB_PASSWORD}
+    volumes:
+      - recipebook-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mariadb-admin", "ping", "-h", "127.0.0.1", "-u", "recipebook", "-p${RECIPEBOOK_DB_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: recipebook-app:local
+    container_name: recipebook-app
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://0.0.0.0:8080
+      CONNECTIONSTRINGS__DEFAULTCONNECTION: "Server=db;Port=3306;UserId=recipebook;Password=${RECIPEBOOK_DB_PASSWORD};Database=recipe_book_db;"
+      USDA__FDCAPIKEY: "${USDA_FDC_API_KEY:-}"
+      # Session-cookie encryption keys live on a named volume instead of inside
+      # the container, so `up --build` no longer logs everyone out.
+      DATAPROTECTION__KEYSDIRECTORY: /app/dpkeys
+    volumes:
+      - recipebook-dpkeys:/app/dpkeys
+
+volumes:
+  recipebook-db-data:
+  recipebook-dpkeys:

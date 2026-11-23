@@ -1,0 +1,27 @@
+@{
+    // Right-rail section tabs, shared by the welcome page and every recipe
+    // section page. Reuses .cover-tabs / .tab-* styling from wwwroot/css/site.css.
+    var counts = (ViewBag.CategoryCounts as Dictionary<string, int>) ?? new Dictionary<string, int>();
+    string current = (ViewBag.Category as string) ?? "";
+    // Keys are RecipeCategory enum names; the controller routes /recipe/{category}
+    // by parsing these back to the enum.
+    // Keys are RecipeCategory enum names; routes parse these back to the enum.
+    string[] tabs = { "Appetizer", "Breakfast", "Soup", "Lunch", "Beverage",
+                      "Salad", "SideDish", "MainDish", "Dessert", "Bread" };
+    string Label(string key) => key switch
+    {
+        "SideDish"  => "Side Dishes",
+        "MainDish"  => "Main Dishes",
+        _ => char.ToUpper(key[0]) + key.Substring(1)
+    };
+}
+<div class="cover-tabs" role="navigation" aria-label="Jump to a recipe section">
+    @foreach (string key in tabs)
+    {
+        int n = counts.TryGetValue(key, out int c) ? c : 0;
+        <a class="tab tab-@key @(key == current ? "tab-active" : "")" href="/recipes/@key">
+            <span class="tab-count">@n</span>
+            <span class="tab-name">@Label(key)</span>
+        </a>
+    }
+</div>

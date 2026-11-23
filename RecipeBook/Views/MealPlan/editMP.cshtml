@@ -1,245 +1,74 @@
-@{
-    ViewData["Title"] = "Edit Meal Plan";
-}
 @model MyViewModel
+@{
+    string[] dayNames = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+    MealType[] typeKeys = { MealType.Breakfast, MealType.Lunch, MealType.Dinner, MealType.Snack, MealType.Dessert, MealType.Drink };
+}
+@{ DateOnly D0 = (DateOnly)ViewBag.D0; }
 <h2 class="border-bottom my-3">@Model.MealPlan.Name Weekly Meal Plan</h2>
 <div class="m-3">
     <form action="update" method="post" id="editMealForm">
         <label for="Name" class="mb-1 mx-3">Change Name:</label>
         <input name="Name" value="@Model.MealPlan.Name" class="me-3" style="width:300px;">
-        @if(@Model.MealPlan.Favorite){
-            <input id="Favorite" name="Favorite" type="checkbox" value="true" checked>
-        }
-        else{
-            <input id="Favorite" name="Favorite" type="checkbox" value="true">
-        }
-        <input type="hidden" value="false" name="Favorite">
-        <label for="Favorite">Favorite?</label>
     </form>
-    
+
     <div class="d-flex flex-row justify-content-around flex-wrap mt-2">
-        <div class="d-flex flex-column m-2">
-            <label>Monday</label>
-            <div class="containter border border-secondary border-2 rounded px-4">
-                <ul class="list-group my-3">
-                    @foreach(Meal m in Model.AllMeals){
-                        if(@m.Weekday == 1){
-                            <li class="list-group-item  list-group-item-action d-flex flex-row justify-content-between">
-                                @m.Recipe.Name &emsp;
-                                <form action="/meal/@m.ID/delete" method="post" class="">
-                                    <button type="submit"class="btn p-0 m-0"style="background-color:transparent">&times;</button>
-                            </form>
-                            </li>
+        @for (int d = 0; d < 7; d++)
+        {
+            DateOnly day = D0.AddDays(d);
+            int dayCalories = Model.MealPlan.Meals.Where(m => m.Date == day).Sum(m => m.MealCalories);
+            <div class="d-flex flex-column m-2">
+                <label>@dayNames[d] &mdash; @day.ToString("MMM d")</label>
+                <div class="containter border border-secondary border-2 rounded px-4">
+                    <ul class="list-group my-3">
+                        @foreach (Meal meal in Model.MealPlan.Meals.Where(m => m.Date == day).OrderBy(m => m.Type))
+                        {
+                            @foreach (MealRecipe link in meal.MealRecipes)
+                            {
+                                <li class="list-group-item list-group-item-action d-flex flex-row justify-content-between">
+                                    @meal.Type : @link.Recipe.Title
+                                    <span class="text-muted small">@link.Recipe.Calories kcal</span>&emsp;
+                                    <form action="/meal/@meal.Id/recipe/@link.RecipeId/remove" method="post" class="">
+                                        <button type="submit" class="btn p-0 m-0" style="background-color:transparent">&times;</button>
+                                    </form>
+                                </li>
+                            }
                         }
-                    }
-                </ul>
+                    </ul>
+                    <div class="text-end small text-muted border-top py-1 mb-2">@dayCalories kcal</div>
+                </div>
+                @foreach (MealType t in typeKeys)
+                {
+                    <button type="button" class="btn btn-secondary btn-sm my-1" data-bs-toggle="modal" data-bs-target="#addMeal@d-@t">
+                        Add @t
+                    </button>
+                }
             </div>
-            <!-- Button trigger modal -->
-            <button type="button" class="btn btn-secondary btn-sm my-2" data-bs-toggle="modal" data-bs-target="#addMeal1" onclick="">
-                Add Meal
-            </button>
-        </div>
-        <div class="d-flex flex-column m-2">
-            <label>Tuesday</label>
-            <div class="containter border border-secondary border-2 rounded px-4">
-                <ul class="list-group my-3">
-                    @foreach(Meal m in Model.AllMeals){
-                        if(@m.Weekday == 2){
-                            <li class="list-group-item  list-group-item-action d-flex flex-row justify-content-between">
-                                @m.Recipe.Name &emsp;
-                                <form action="/meal/@m.ID/delete" method="post" class="">
-                                    <button type="submit"class="btn p-0 m-0"style="background-color:transparent">&times;</button>
-                            </form>
-                            </li>
-                        }
-                    }
-                </ul>
-            </div>
-            <!-- Button trigger modal -->
-            <button type="button" class="btn btn-secondary btn-sm my-2" data-bs-toggle="modal" data-bs-target="#addMeal2">
-                Add Meal
-            </button>
-        </div>
-        <div class="d-flex flex-column m-2">
-            <label>Wednesday</label>
-            <div class="containter border border-secondary border-2 rounded px-4">
-                <ul class="list-group my-3">
-                    @foreach(Meal m in Model.AllMeals){
-                        if(@m.Weekday == 3){
-                            <li class="list-group-item  list-group-item-action d-flex flex-row justify-content-between">
-                                @m.Recipe.Name &emsp;
-                                <form action="/meal/@m.ID/delete" method="post" class="">
-                                    <button type="submit"class="btn p-0 m-0"style="background-color:transparent">&times;</button>
-                            </form>
-                            </li>
-                        }
-                    }
-                </ul>
-            </div>
-            <!-- Button trigger modal -->
-            <button type="button" class="btn btn-secondary btn-sm my-2" data-bs-toggle="modal" data-bs-target="#addMeal3">
-                Add Meal
-            </button>
-        </div>
-        <div class="d-flex flex-column m-2">
-            <label>Thursday</label>
-            <div class="containter border border-secondary border-2 rounded px-4">
-                <ul class="list-group my-3">
-                    @foreach(Meal m in Model.AllMeals){
-                        if(@m.Weekday == 4){
-                            <li class="list-group-item  list-group-item-action d-flex flex-row justify-content-between">
-                                @m.Recipe.Name &emsp;
-                                <form action="/meal/@m.ID/delete" method="post" class="">
-                                    <button type="submit"class="btn p-0 m-0"style="background-color:transparent">&times;</button>
-                            </form>
-                            </li>
-                        }
-                    }
-                </ul>
-            </div>
-            <!-- Button trigger modal -->
-            <button type="button" class="btn btn-secondary btn-sm my-2" data-bs-toggle="modal" data-bs-target="#addMeal4">
-                Add Meal
-            </button>
-        </div>
-        <div class="d-flex flex-column m-2">
-            <label>Friday</label>
-            <div class="containter border border-secondary border-2 rounded px-4">
-                <ul class="list-group my-3">
-                    @foreach(Meal m in Model.AllMeals){
-                        if(@m.Weekday == 5){
-                            <li class="list-group-item  list-group-item-action d-flex flex-row justify-content-between">
-                                @m.Recipe.Name &emsp;
-                                <form action="/meal/@m.ID/delete" method="post" class="">
-                                    <button type="submit"class="btn p-0 m-0"style="background-color:transparent">&times;</button>
-                            </form>
-                            </li>
-                        }
-                    }
-                </ul>
-            </div>
-            <!-- Button trigger modal -->
-            <button type="button" class="btn btn-secondary btn-sm my-2" data-bs-toggle="modal" data-bs-target="#addMeal5">
-                Add Meal
-            </button>
-        </div>
-        <div class="d-flex flex-column m-2">
-            <label>Saturday</label>
-            <div class="containter border border-secondary border-2 rounded px-4">
-                <ul class="list-group my-3">
-                    @foreach(Meal m in Model.AllMeals){
-                        if(@m.Weekday == 6){
-                            <li class="list-group-item  list-group-item-action d-flex flex-row justify-content-between">
-                                @m.Recipe.Name &emsp;
-                                <form action="/meal/@m.ID/delete" method="post" class="">
-                                    <button type="submit"class="btn p-0 m-0"style="background-color:transparent">&times;</button>
-                                </form>
-                            </li>
-                        }
-                    }
-                </ul>
-            </div>
-            <!-- Button trigger modal -->
-            <button type="button" class="btn btn-secondary btn-sm my-2" data-bs-toggle="modal" data-bs-target="#addMeal6">
-                Add Meal
-            </button>
-        </div>
-        <div class="d-flex flex-column m-2">
-            <label>Sunday</label>
-            <div class="containter border border-secondary border-2 rounded px-4">
-                <ul class="list-group my-3">
-                    @foreach(Meal m in Model.AllMeals){
-                        if(@m.Weekday == 7){
-                            <li class="list-group-item  list-group-item-action d-flex flex-row justify-content-between">
-                                @m.Recipe.Name &emsp;
-                                <form action="/meal/@m.ID/delete" method="post" class="">
-                                    <button type="submit"class="btn p-0 m-0"style="background-color:transparent">&times;</button>
-                            </form>
-                            </li>
-                        }
-                    }
-                </ul>
-            </div>
-            <!-- Button trigger modal -->
-            <button type="button" class="btn btn-secondary btn-sm my-2" data-bs-toggle="modal" data-bs-target="#addMeal7">
-                Add Meal
-            </button>
-    
-        </div>
+        }
     </div>
-    
+
     <div class="d-flex flex-column align-items-end p-1 mt-3">
-        <button type="submit" form="editMealForm" value="Submit"  class="btn btn-primary mb-2 ms-0 w-25">Save Meal Plan</button>
-        <form action="delete" method="post" class="me-2 w-25"><button  class="btn btn-danger mx-2 w-100">Delete</button></form>
+        <button type="submit" form="editMealForm" value="Submit" class="btn btn-primary mb-2 ms-0 w-25">Save Meal Plan</button>
+        <form action="delete" method="post" class="me-2 w-25"><button class="btn btn-danger mx-2 w-100">Delete</button></form>
     </div>
 </div>
 
-<!-- Monday Modal -->
-<div class="modal fade" id="addMeal1" tabindex="-1" role="dialog" aria-labelledby="addMealTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            @Model.SetDoW(@ViewBag.M) 
-            @await Html.PartialAsync("../Meal/_AddMeal.cshtml", Model)
+@for (int d = 0; d < 7; d++)
+{
+    @foreach (MealType t in typeKeys)
+    {
+        <div class="modal fade" id="addMeal@d-@t" tabindex="-1" role="dialog" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
+                <div class="modal-content">
+                    @{ DateOnly addDate = D0.AddDays(d); }
+                    @{ ViewData["MealType"] = t; }
+                    @await Html.PartialAsync("../Meal/_AddMeal.cshtml", new MyViewModel{
+                        MealPlan = Model.MealPlan,
+                        SelectedDate = addDate,
+                        AllRecipes = Model.AllRecipes,
+                        AllMeals = Model.AllMeals
+                    })
+                </div>
+            </div>
         </div>
-    </div>
-</div>
-
-<!-- Tuesday Modal -->
-<div class="modal fade" id="addMeal2" tabindex="-1" role="dialog" aria-labelledby="addMealTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            @Model.SetDoW(@ViewBag.T) 
-            @await Html.PartialAsync("../Meal/_AddMeal.cshtml", Model)
-        </div>
-    </div>
-</div>
-
-<!-- Wednesday Modal -->
-<div class="modal fade" id="addMeal3" tabindex="-1" role="dialog" aria-labelledby="addMealTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            @Model.SetDoW(@ViewBag.W) 
-            @await Html.PartialAsync("../Meal/_AddMeal.cshtml", Model)
-        </div>
-    </div>
-</div>
-
-<!-- Thursday Modal -->
-<div class="modal fade" id="addMeal4" tabindex="-1" role="dialog" aria-labelledby="addMealTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            @Model.SetDoW(@ViewBag.Th) 
-            @await Html.PartialAsync("../Meal/_AddMeal.cshtml", Model)
-        </div>
-    </div>
-</div>
-
-<!-- Friday Modal -->
-<div class="modal fade" id="addMeal5" tabindex="-1" role="dialog" aria-labelledby="addMealTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            @Model.SetDoW(@ViewBag.F) 
-            @await Html.PartialAsync("../Meal/_AddMeal.cshtml", Model)
-        </div>
-    </div>
-</div>
-
-<!-- Saturday Modal -->
-<div class="modal fade" id="addMeal6" tabindex="-1" role="dialog" aria-labelledby="addMealTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            @Model.SetDoW(@ViewBag.Sa) 
-            @await Html.PartialAsync("../Meal/_AddMeal.cshtml", Model)
-        </div>
-    </div>
-</div>
-
-<!-- Sunday Modal -->
-<div class="modal fade" id="addMeal7" tabindex="-1" role="dialog" aria-labelledby="addMealTitle" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg" role="document">
-        <div class="modal-content">
-            @Model.SetDoW(@ViewBag.Su)            
-            @await Html.PartialAsync("../Meal/_AddMeal.cshtml", Model)
-        </div>
-    </div>
-</div>
+    }
+}

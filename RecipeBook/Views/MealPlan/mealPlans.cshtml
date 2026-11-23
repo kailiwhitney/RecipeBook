@@ -2,5 +2,13 @@
     ViewData["Title"] = "All Meal Plans";
 }
 @model List<MealPlan>
-@await Html.PartialAsync("_MPNav")
-@await Html.PartialAsync("_ViewPlans", Model)
+
+<div class="section-layout">
+    <div class="section-main">
+        @await Html.PartialAsync("_ViewPlans", Model)
+    </div>
+
+    <aside class="section-tabs">
+        @await Html.PartialAsync("_SectionTabs")
+    </aside>
+</div>

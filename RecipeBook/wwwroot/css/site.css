@@ -1,23 +1,225 @@
-html {
-  font-size: 14px;
-  
+/* Recipe Book — dark theme, palette ported from recipe-tracker/style.css.
+   If you change a value here, mirror it in Views/Shared/_Layout.cshtml.css,
+   which is served as RecipeBook.styles.css and loads after this file. */
+:root {
+  --bg: #101418;
+  --card: #1a2027;
+  --field: #0d1115;
+  --line: #2b343d;
+  --fg: #e8edf2;
+  --muted: #8fa0ae;
+  --accent: #46c58a;
+  --accent-ink: #08130d;
+  --warn: #e8b34c;
+  --danger: #e0675f;
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
+/* Bootstrap 5.1 ships dark-mode CSS but not the [data-bs-theme="dark"] variable
+   swizzle (that arrived in 5.3), so we set its core vars ourselves. This is what
+   actually makes modals, dropdowns and shadows go dark. */
+:root {
+  --bs-body-bg: var(--bg);
+  --bs-body-color: var(--fg);
+  --bs-border-color: var(--line);
+  --bs-secondary-rgb: 143 160 174;
+  --bs-tertiary-rgb: 43 52 61;
 }
 
-html {
-  position: relative;
-  min-height: 100%;
-}
+html { position: relative; min-height: 100%; font-size: 14px; }
+@media (min-width: 768px) { html { font-size: 16px; } }
 
 body {
-  margin-bottom: 60px;
+  margin: 0 0 60px;
+  background: var(--bg);
+  color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
-h1{
-  font-family: "Lucida Handwriting", cursive;
+h1, h2, h3 { font-weight: 650; letter-spacing: -0.01em; }
+h1 { font-size: 1.4rem; margin: 0 0 8px; }
+h2 { font-size: 1.15rem; margin: 0 0 8px; }
+a { color: var(--accent); text-decoration-color: #2f7d5c; }
+a:hover { color: #6fdcae; }
+.text-muted, .footer, small { color: var(--muted) !important; }
+.text-danger { color: var(--danger) !important; }
+.border-bottom, .border-top { border-color: var(--line); }
+
+/* ---- layout chrome ---- */
+.app-title { font-size: 1.2rem; margin: 14px 8px 8px; text-align: center; }
+@media (max-width: 575px) { .app-title { font-size: 1.05rem; } }
+.navbar { background: var(--card) !important; border: 1px solid var(--line); border-radius: 10px; }
+.navbar-toggler { border-color: var(--line); margin: 6px; }
+.navbar .nav-link { padding: 10px 12px; }
+@media (max-width: 575px) { .navbar-nav { flex-direction: column; } .navbar .nav-link { width: 100%; } }
+.nav-link.text-dark, .nav-link { color: var(--muted); }
+.nav-link:hover { color: var(--accent); }
+.footer { border-top: 1px solid var(--line); background: transparent; }
+
+/* ---- category / meal-plan tabs ---- */
+.nav-tabs { border-bottom: none; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.nav-tabs .nav-item { flex: 1 1 auto; }
+.nav-tabs .nav-link, .nav-pills .nav-link {
+  background: var(--card); color: var(--muted);
+  border: 1px solid var(--line) !important; border-radius: 8px; text-align: center;
 }
+.nav-tabs .nav-link.active, .nav-pills .nav-link.active,
+.nav-tabs .nav-link:hover { background: var(--card); color: var(--accent); border-color: var(--accent) !important; }
+
+/* ---- cards & tables (the "panel" look) ---- */
+.card, .modal-content, .table, [class*="border-secondary"] {
+  background: var(--card); color: var(--fg); border-color: var(--line); border-radius: 10px;
+}
+.table { margin: 0; }
+/* let wide recipe/meal-plan tables scroll sideways instead of squashing */
+table.table, .table-responsive-hack { display: block; overflow-x: auto; white-space: nowrap; max-width: 100%; }
+.table th, .table td { padding: 8px 10px; }
+.table :is(th, td) { color: var(--fg); border-color: var(--line); background: transparent; }
+.table thead th { color: var(--muted); font-size: .85rem; text-transform: uppercase; letter-spacing: .03em; }
+.table-hover tbody tr:hover > * { background: #202831; color: inherit; }
+
+/* ---- list groups (shopping list, meal plan days) ---- */
+.list-group-item { background: var(--card); color: var(--fg); border-color: var(--line); }
+.list-group-item-action:hover { background: #202831; color: var(--fg); }
+
+/* ---- auth pages (login / register) ---- */
+.auth-card {
+  max-width: 34rem; margin: 1.5rem auto; padding: 1.25rem;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+}
+.field { display: block; margin-bottom: 0.75rem; }
+.field label { display: block; font-size: .9rem; color: var(--muted); margin-bottom: 4px; }
+.field input, .field textarea, .field select { width: 100%; margin-top: 0; }
+
+/* ---- forms ---- */
+.form-control, .form-select, input, select, textarea {
+  background: var(--field); color: var(--fg); border: 1px solid var(--line); border-radius: 7px;
+}
+.form-control:focus, .form-select:focus, input:focus, select:focus, textarea:focus {
+  background: var(--field); color: var(--fg); border-color: var(--accent);
+  box-shadow: 0 0 0 .15rem #46c58a33; outline: none;
+}
+.form-check-input { background: var(--field); border-color: var(--line); }
+.form-check-input:checked { background: var(--accent); border-color: var(--accent); }
+input[type="date"] { color-scheme: dark; }
+label, .form-label { color: var(--fg); }
+.invalid-feedback, .field-validation-error { color: var(--warn); }
+
+/* ---- buttons ---- */
+.btn { border-radius: 7px; font-weight: 600; }
+.btn-primary, .btn-dark { background: var(--accent); border-color: var(--accent); color: var(--accent-ink) !important; }
+.btn-primary:hover, .btn-dark:hover { background: #3fb27d; border-color: #3fb27d; color: var(--accent-ink) !important; }
+.btn-secondary, .btn-outline-secondary {
+  background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 400;
+}
+.btn-secondary:hover, .btn-outline-secondary:hover { background: #232b34; color: var(--fg); border-color: var(--muted); }
+.btn-danger { background: transparent; color: var(--danger); border: 1px solid #5a2f2c; }
+.btn-danger:hover { background: #3a2321; color: #f08a83; }
+
+/* ---- modals & accordion ---- */
+.modal-content { background: var(--card); border: 1px solid var(--line); }
+.modal-header, .modal-footer { border-color: var(--line); }
+.btn-close { filter: invert(1) grayscale(1) brightness(2); }
+.card-header { background: #202831; border-color: var(--line); }
+.accordion-button, .card-header .btn { color: var(--accent); background: transparent; }
+
+/* ---- recipe view: equipment / ingredients columns stack on narrow screens ---- */
+@media (max-width: 700px) {
+  .d-flex.flex-row { flex-direction: column !important; }
+  .mx-5 { margin-left: 0.5rem !important; margin-right: 0.5rem !important; }
+}
+
+/* ---- welcome dashboard inside the shared book page ---- */
+.dash-grid { display: grid; gap: 1rem; margin-top: .5rem; }
+@media (min-width: 900px) { .dash-grid { grid-template-columns: 1fr 8.5rem; } }
+.dash-intro { color: #2a231c; }
+
+/* ---- the book: every logged-in page renders inside this paper panel ---- */
+.book-page {
+  margin: 1rem auto 2rem; padding: 1.5rem 1.25rem;
+  background:
+    linear-gradient(100deg, #c9a67e 0, #c9a67e 8px, #b9946a 8px, #b9946a 14px, transparent 14px),
+    linear-gradient(#f3ece1, #e8ddcb);
+  color: #2a231c; border: 1px solid #7d6a52; border-radius: 4px 14px 14px 4px;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .45);
+}
+.book-footer { margin-top: 1.25rem; text-align: right; }
+.log-out { color: #6f5c46; font-size: .85rem; text-decoration: underline; }
+.log-out:hover { color: #2a231c; }
+
+/* content inside the paper page flips to dark-on-light */
+.book-page a { color: #7a3b12; }
+.book-page h1, .book-page h2, .book-page h3, .book-page h4 { color: #2a231c; }
+.book-page .border { border-color: #c7b8a2 !important; background: transparent; }
+.book-page table.table { background: transparent; }
+.book-page .btn-secondary { background: #efe6d6; color: #2a231c; border-color: #a89b85; }
+
+/* ---- category landing header ---- */.cat-hero { text-align: center; margin: 1.25rem auto .25rem; }
+.cat-hero h1 { font-size: clamp(1.4rem, 5vw, 2rem); }
+.cat-hero p { color: var(--muted); margin: .35rem 0 0; }
+
+/* ---- section pages: table on the left, section tabs down the right edge ---- */
+.section-layout { display: grid; gap: 1rem; margin: 1rem auto; max-width: 46rem; }
+@media (min-width: 900px) { .section-layout { grid-template-columns: 1fr 8.5rem; } }
+.section-main { min-width: 0; }
+.section-main .mx-5 { margin-left: 0 !important; margin-right: 0 !important; }
+.section-tabs { display: flex; }
+.section-tabs .cover-tabs { flex: 1 1 auto; }
+.tab-active { outline: 2px solid #2a231c; outline-offset: -3px; }
+
+/* ---- welcome page: the book cover ---- */
+.book-cover {
+  display: grid; gap: 1rem; margin: 1.25rem auto; max-width: 46rem;
+}
+@media (min-width: 900px) { .book-cover { grid-template-columns: 1fr 8.5rem; } }
+
+.cover-inner {
+  position: relative; padding: 2rem 1.5rem; border-radius: 4px 14px 14px 4px;
+  background:
+    linear-gradient(100deg, #c9a67e 0, #c9a67e 8px, #b9946a 8px, #b9946a 14px, transparent 14px),
+    linear-gradient(#f3ece1, #e8ddcb);
+  color: #2a231c; box-shadow: 0 10px 26px rgba(0, 0, 0, .45);
+  border: 1px solid #7d6a52;
+}
+.cover-eyebrow { margin: 0; font-size: .75rem; letter-spacing: .12em; text-transform: uppercase; color: #6f5c46; }
+.cover-title { margin: .35rem 0 0; font-size: clamp(1.7rem, 6vw, 2.6rem); line-height: 1.15; font-weight: 700; letter-spacing: -.02em; }
+.cover-rule { height: 2px; margin: .9rem 0; background: #b3a08a; }
+.cover-sub { margin: 0; color: #6f5c46; font-style: italic; }
+.cover-stats { display: flex; gap: 1.25rem; flex-wrap: wrap; margin-top: 1.1rem; }
+.cover-stats div { display: flex; flex-direction: column; font-size: .8rem; color: #6f5c46; text-transform: uppercase; letter-spacing: .06em; }
+.cover-stats span { font-size: 1.5rem; font-weight: 700; color: #2a231c; }
+
+/* index tabs down the right edge; a horizontal strip on phones */
+.cover-tabs { display: flex; flex-direction: row; flex-wrap: wrap; gap: 6px; align-content: start; }
+@media (min-width: 900px) { .cover-tabs { flex-direction: column; flex-wrap: nowrap; } }
+.tab {
+  display: flex; align-items: center; gap: .4rem; padding: .5rem .7rem;
+  border-radius: 6px; text-decoration: none; font-size: .85rem; font-weight: 600;
+  color: #2a231c; border: 1px solid rgba(0, 0, 0, .18); flex: 1 1 auto; min-width: 7.5rem;
+}
+@media (min-width: 900px) { .tab { flex: 0 0 auto; } }
+.tab-count { margin-left: auto; font-size: .75rem; opacity: .75; }
+.tab:hover { color: #2a231c; filter: brightness(1.08); }
+/* One pastel per RecipeCategory enum name. _SectionTabs emits "tab-@key" where
+   key is the enum member (singular), so these class names must match it exactly
+   (CSS class matching is case-sensitive). They drifted from the pre-enum names
+   (tab-desserts / tab-drinks / tab-soupsNstews) when the enum was renamed, which
+   silently dropped every tab background and left dark text on the dark page. */
+.tab-Appetizer { background: #f6d9b8; } .tab-Breakfast { background: #f7e6a8; }
+.tab-Soup      { background: #d8ecdd; } .tab-Lunch     { background: #f0dccb; }
+.tab-Beverage  { background: #bfe9e6; } .tab-Salad     { background: #d6ecc9; }
+.tab-SideDish  { background: #cfe4f2; } .tab-MainDish  { background: #f3c9c2; }
+.tab-Dessert   { background: #f8cfe0; } .tab-Bread     { background: #e6d7f0; }
+
+.cover-more { display: flex; gap: .6rem; flex-wrap: wrap; margin: 0 auto 1rem; max-width: 46rem; }
+.cover-more .btn { flex: 1 1 auto; }
+
+/* ---- global action bar (every logged-in page, under the content) ---- */
+.global-actions { display: flex; gap: .6rem; flex-wrap: wrap; margin: 0 auto 1.5rem; max-width: 46rem; padding: 0 12px; }
+.global-actions .btn { flex: 1 1 auto; }
+.cover-hint { text-align: center; color: var(--muted); font-style: italic; }
+
+/* ---- misc ---- */
+.badge.bg-secondary, .badge.text-bg-secondary { background: #2b343d !important; color: var(--muted) !important; }
+.badge.bg-success { background: #143a28 !important; color: var(--accent) !important; }
+.badge.bg-warning { background: #3a3016 !important; color: var(--warn) !important; }
+.footer { position: absolute; bottom: 0; width: 100%; white-space: nowrap; line-height: 60px; }

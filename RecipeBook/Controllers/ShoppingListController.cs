@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.Filters;
 using Microsoft.EntityFrameworkCore;
 using RecipeBook.Models;
 
@@ -15,100 +14,78 @@ public class ShoppingListController : Controller
         _context = context;
     }
 
-    //! CREATE
-    // *** create shopping list from meal plan ***
-    [HttpGet("/mealplan/{mpId}/shoppingList/create")]
-    public IActionResult CreateShoppingList(int mpId){
-        // get meal plan
-        MealPlan? mealplan = _context.MealPlans
-                            .Include(i=>i.Meals)
-                            .ThenInclude(m=>m.Recipe)
-                            .ThenInclude(r=>r.Ingredients)
-                            .FirstOrDefault(i=>i.ID == mpId);
-        if(mealplan != null){
-            // add new shopping list 
-            _context.ShoppingLists.Add(new ShoppingList(mealplan.ID));
-            _context.SaveChanges();
-            return Redirect($"/mealplan/{mpId}/edit");
-        }
-        return Redirect("/mealplan");
-    }
-
-    //! READ
-    [HttpGet("/shoppingList/{slId}/view")]
-    public IActionResult ViewSL(int slId){
+    // Each user has exactly one shopping list, created lazily on first open so
+    // there is no separate create step and no empty-list pileup. NeededIngredients
+    // is computed (not stored), so it is filled after the list exists.
+    private ShoppingList GetOrCreateUserList(int uid)
+    {
         ShoppingList? sl = _context.ShoppingLists
-                            .Include(i=>i.Products)
-                            .Include(i=>i.MealPlan)
-                            .FirstOrDefault(i=>i.ID == slId);
-        if(sl == null){
-            return Redirect("/mealplan");
-        }     
-        return View(sl);
-    }
-
-    //! UPDATE
-    [HttpGet("mealplan/{mpId}/shoppingList/update")]
-    //# NOTE: the action is pass in to determine which page the updateSL will redirect to (-1 is reserved to force default action)
-    public IActionResult UpdateSL(int mpId){
-        // *** get mealplan
-        //# INCLUDE: (meals-> [meal) -> {Recipe] -> Ingredients}
-        MealPlan? mealplan = _context.MealPlans
-                            .Include(i=>i.Meals)
-                            .ThenInclude(m=>m.Recipe)
-                            .ThenInclude(r=>r.Ingredients)
-                            .FirstOrDefault(i=>i.ID == mpId);
-        if(mealplan != null){
-            // *** get shopping list
-            //# INCLUDE: product list
-            ShoppingList? sl = _context.ShoppingLists
-                                .Include(i=>i.Products)
-                                .FirstOrDefault(i=>i.MealPlanID == mpId); 
-            // if exists, delete list
-            if(sl != null){
-                // delete all existing products
-                foreach(Product p in sl.Products){
-                    _context.Products.Remove(p);
-                }
-                // delete shopping list
-                _context.ShoppingLists.Remove(sl);
-                _context.SaveChanges();
-            }
-            // add new shopping list 
-            sl = new ShoppingList(mpId);
+                            .Include(i => i.MealPlans)
+                            .FirstOrDefault(i => i.UserId == uid);
+        if (sl == null)
+        {
+            sl = new ShoppingList { Name = "Shopping List", UserId = uid };
             _context.ShoppingLists.Add(sl);
             _context.SaveChanges();
-        // Console.WriteLine(new String('=', 20));
-        // Console.WriteLine($"MADE IT TO SHOPPING LIST {sl.ID}");
-        // Console.WriteLine(new String('=', 20));
-            // update products in shopping list
-            return Redirect($"/shoppingList/{sl.ID}/updateProducts");
         }
-        //# For null value only
-        return Redirect("/mealplan");
+        return sl;
     }
 
-    //! DELETE
-    [HttpGet("shoppingList/{slId}/delete")]
-    public IActionResult DeleteSL(int slId){
-        // find all products in shopping list
-        ShoppingList? sl = _context.ShoppingLists
-                            .Include(i=>i.Products)
-                            .FirstOrDefault(i=>i.ID == slId); 
-        // if exists, delete list
-        if(sl != null){
-            // delete all existing products
-            foreach(Product p in sl.Products){
-                _context.Products.Remove(p);
-            }
-            // delete shopping list
-            _context.ShoppingLists.Remove(sl);
+    // Fill the transient needs + cost from every plan currently linked to this list.
+    private ShoppingList WithNeeds(ShoppingList sl)
+    {
+        List<int> mpIds = _context.MealPlans
+                            .Where(mp => mp.ShoppingListId == sl.Id)
+                            .Select(mp => mp.Id)
+                            .ToList();
+        sl.NeededIngredients = PlanningCalculator.NeededIngredients(_context, mpIds);
+        return sl;
+    }
+
+    //! READ — the canonical URL for the shopping list screen.
+    [HttpGet("/shoppinglist")]
+    public IActionResult Index()
+    {
+        int uid = HttpContext.Session.GetInt32("uid") ?? 0;
+        ShoppingList sl = WithNeeds(GetOrCreateUserList(uid));
+        return View("viewSL", sl);
+    }
+
+    // Legacy deep link kept so old bookmarks still work: forward to the user's list.
+    [HttpGet("/shoppingList/{slId}/view")]
+    public IActionResult ViewSL(int slId) => Redirect("/shoppinglist");
+
+    //! UPDATE — attach a plan to this list and refresh the aggregated needs.
+    // Attaching is idempotent; re-running after recipe edits just recomputes needs,
+    // which is why nothing needs "clear existing products" any more.
+    [HttpGet("mealplan/{mpId}/shoppingList/generate")]
+    public IActionResult GenerateFromPlan(int mpId)
+    {
+        int uid = HttpContext.Session.GetInt32("uid") ?? 0;
+        ShoppingList sl = GetOrCreateUserList(uid);
+
+        MealPlan? mp = _context.MealPlans
+                        .FirstOrDefault(i => i.Id == mpId && i.UserId == uid);
+        if (mp != null && mp.ShoppingListId != sl.Id)
+        {
+            mp.ShoppingListId = sl.Id;
             _context.SaveChanges();
         }
-        // Console.WriteLine(new String('=', 20));
-        // Console.WriteLine($"Leaving DeleteSL");
-        // Console.WriteLine(new String('=', 20));
-        // return to all meal plans
-        return Redirect("/mealplan");
+        return Redirect("/shoppinglist");
+    }
+
+    //! DELETE — detach a plan from the list (the plan itself is untouched).
+    [HttpPost("mealplan/{mpId}/shoppingList/detach")]
+    public IActionResult DetachPlan(int mpId)
+    {
+        int uid = HttpContext.Session.GetInt32("uid") ?? 0;
+        MealPlan? mp = _context.MealPlans
+                        .FirstOrDefault(i => i.Id == mpId && i.UserId == uid);
+        if (mp != null)
+        {
+            mp.ShoppingListId = null;
+            _context.SaveChanges();
+        }
+        return Redirect("/shoppinglist");
     }
 }

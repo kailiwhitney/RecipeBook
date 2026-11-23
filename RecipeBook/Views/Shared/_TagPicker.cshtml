@@ -1,0 +1,60 @@
+@*
+  Reusable "dynamic enum" picker for Tags / Cuisine.
+  Model: the recipe's current List<string> for this field.
+  ViewData["Field"]: field name ("Tags"/"Cuisine").
+  ViewData["All"]:   existing values to reuse (badge buttons).
+  Clicking an existing badge toggles it; "Add" adds a brand-new value. Values are
+  normalized on save, so camping == Camping and reusing an existing badge is the
+  intended flow. Badge styling follows Bootstrap's badges example.
+*@
+@model List<string>
+@{
+    string field = (string)(ViewData["Field"] ?? "Tags");
+    var current = Model ?? new List<string>();
+    var all = (ViewData["All"] as IEnumerable<string>) ?? Enumerable.Empty<string>();
+}
+
+<div class="d-flex flex-column my-2 tag-picker" data-field="@field">
+    <label class="mb-1">@field</label>
+
+    @* Existing values as clickable badges. *@
+    <div class="d-flex flex-wrap gap-1 mb-2 tag-existing">
+        @foreach (var opt in all)
+        {
+            bool on = current.Any(v => string.Equals(v, opt, StringComparison.OrdinalIgnoreCase));
+            <button type="button"
+                    class="btn btn-primary btn-sm tag-badge @(on ? "" : "opacity-50")"
+                    data-value="@opt" onclick="toggleTagBadge(this)">
+                @opt
+            </button>
+        }
+    </div>
+
+    @* Selected values post as hidden inputs. *@
+    <div class="tag-hidden">
+        @for (int i = 0; i < current.Count; i++)
+        {
+            <input type="hidden" name="@($"{field}[{i}]")" value="@current[i]">
+        }
+    </div>
+
+    @* Selected values shown as removable badges. *@
+    <div class="d-flex flex-wrap gap-1 mb-2 tag-selected">
+        @foreach (var v in current)
+        {
+            <span class="badge bg-secondary d-inline-flex align-items-center">
+                @v
+                <button type="button" class="btn-close ms-1" aria-label="remove"
+                        onclick="removeTagBadge(this, '@v')"></button>
+            </span>
+        }
+    </div>
+
+    @* Add a brand-new value. *@
+    <div class="d-flex gap-1 align-items-center" style="max-width:420px;">
+        <input type="text" class="form-control form-control-sm tag-new-input"
+               placeholder="Add new @field.ToLower()">
+        <button type="button" class="btn btn-outline-secondary btn-sm"
+                onclick="addTagBadge(this)">Add</button>
+    </div>
+</div>

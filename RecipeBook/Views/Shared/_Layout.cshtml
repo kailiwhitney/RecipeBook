@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-bs-theme="dark">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,35 +11,7 @@
 <body>
     <header>
         @if(@Context.Session.GetInt32("uid") != null){
-            <div class="d-flex flex-column">
-                <h2 class="text-center">@Context.Session.GetString("FamilyName") Family Recipes</h2>
-                <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-                    <div class="container-fluid">
-                        <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                            <ul class="navbar-nav flex-grow-1">
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Recipe" asp-action="Recipe">Cookbook</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="MealPlan" asp-action="MealPlans">Meal Plans</a>
-                                </li>
-                            </ul>
-                            <ul class="navbar-nav flex-grow-1 d-sm-inline-flex justify-content-end">
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="Logout">Log Out</a>
-                                </li>
-                            </ul>
-                        </div>
-                        @* <div class="navbar-collapse collapse d-sm-inline-flex justify-content-end">
-                            <ul class="navbar-nav flex-grow-1 d-sm-inline-flex justify-content-end">
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="User" asp-action="Logout">Log Out</a>
-                                </li>
-                            </ul>
-                        </div> *@
-                    </div>
-                </nav>
-            </div>
+            <h2 class="app-title">@Context.Session.GetString("FamilyName") Family Recipes</h2>
         }      
     </header>
     <div class="container">
@@ -47,10 +19,17 @@
             @RenderBody()
         </main>
     </div>
+    @if(@Context.Session.GetInt32("uid") != null){
+        <div class="global-actions">
+            <a href="/recipes" class="btn btn-primary">Recipe Book</a>
+            <a href="/mealplan" class="btn btn-secondary">Plan this week's meals</a>
+            <a href="/shoppinglist" class="btn btn-primary">Shopping list</a>
+        </div>
+    }
 
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2023 - RecipeBook - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; @DateTime.Now.Year - RecipeBook
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

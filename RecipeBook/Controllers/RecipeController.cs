@@ -1,6 +1,6 @@
 using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using RecipeBook.Models;
 
@@ -15,11 +15,60 @@ public class RecipeController : Controller
         _context = context;
     }
 
-    // **** recipe main page ****
-    [SessionCheck]
-    [HttpGet("recipe")]
-    public IActionResult Recipe(){
-        return View();
+    private int Uid => HttpContext.Session.GetInt32("uid") ?? 0;
+
+    // "recipes" is the app home. The root URL "/" is NOT mapped here: it belongs
+    // to UserController.Index, which bounces an authenticated visitor back here
+    // via RedirectToResult("Index","Recipe") -> "/recipes". Mapping "/" here as
+    // well made it a second, equally-ranked candidate for the root URL (an empty
+    // attribute template and "/" are the same template to the router), which is
+    // what produced the AmbiguousMatchException on every request to "/".
+    [HttpGet("recipes")]
+    public IActionResult Index(){
+        ViewBag.CategoryCounts = GetCategoryCounts();
+        SetTagPickLists();
+
+        // Cover stats (the three numbers under the title). Moved here from
+        // HomeController.Dashboard when that page was merged into this view.
+        ViewBag.RecipeCount = _context.Recipes.Count(r => r.UserId == Uid);
+        ViewBag.FavoriteCount = _context.Recipes.Count(r => r.UserId == Uid && r.Favorite);
+        ViewBag.MealPlanCount = _context.MealPlans.Count(m => m.UserId == Uid);
+
+        // index.cshtml is typed @model MyViewModel and enumerates Model.AllRecipes,
+        // so returning a bare View() left Model null (NullReferenceException on the
+        // home page). Ingredients are included because the table counts them.
+        MyViewModel vm = new()
+        {
+            AllRecipes = _context.Recipes
+                            .Where(r => r.UserId == Uid)
+                            .Include(i => i.Ingredients)
+                            .ToList()
+        };
+        return View(vm);
+    }
+
+    private void SetTagPickLists()
+    {
+        int uid = Uid;
+        var recipes = _context.Recipes.Where(r => r.UserId == uid).ToList();
+        ViewBag.AllTags = TagNormalizer.CollectUsed(recipes.Select(r => r.Tags));
+        ViewBag.AllCuisine = TagNormalizer.CollectUsed(recipes.Select(r => r.Cuisine));
+    }
+
+    private Dictionary<string, int> GetCategoryCounts()
+    {
+        int uid = Uid;
+        var counts = new Dictionary<string, int>();
+        foreach (Recipe r in _context.Recipes.Where(r => r.UserId == uid).ToList())
+        {
+            foreach (RecipeCategory c in r.Categories)
+            {
+                string key = c.ToString();
+                counts.TryGetValue(key, out int n);
+                counts[key] = n + 1;
+            }
+        }
+        return counts;
     }
 
     //! CREATE
@@ -27,67 +76,63 @@ public class RecipeController : Controller
     [HttpPost("recipe/add")]
     public IActionResult CreateRecipe(Recipe recipe){
         if(ModelState.IsValid){
+            // Owner comes from the session only, and the id is cleared so a posted
+            // primary key cannot overwrite an existing row.
+            recipe.UserId = Uid;
+            recipe.Id = 0;
+            recipe.Tags = TagNormalizer.NormalizeList(recipe.Tags);
+            recipe.Cuisine = TagNormalizer.NormalizeList(recipe.Cuisine);
             _context.Recipes.Add(recipe);
             _context.SaveChanges();
-            return Redirect($"{recipe.ID}/edit");
+            return Redirect($"{recipe.Id}/edit");
         }
-        return Redirect($"{recipe.Category}");
+        string back = recipe.Categories.Count > 0 ? recipe.Categories[0].ToString() : "recipes";
+        return Redirect($"/recipes/{back}");
     }
 
     //! READ
     // **** view all recipes in a category ****
-    [SessionCheck]
-    [HttpGet("recipe/{category}")]
+    [HttpGet("recipes/{category}")]
     public IActionResult ViewCategory(string category){
-        List<Recipe> recipes;
-        switch(category){
-            case "appetizers":
-            case "breakfast":
-            case "soupsNstews":
-            case "mainDishes":
-            case "sideDishes":
-            case "breads":
-            case "desserts":
-            case "drinks":
-                recipes = _context.Recipes
-                        .Where(r => r.Category == category)
-                        .Where(r => r.UserID == HttpContext.Session.GetInt32("uid"))
-                        .Include(i=>i.Ingredients)
-                        .ToList();
-                ViewBag.Category = category;
-                return View(recipes);
-            default:
-                return RedirectToAction("Recipe");
+        if (!Enum.TryParse<RecipeCategory>(category, ignoreCase: true, out RecipeCategory cat))
+        {
+            return RedirectToAction("Index");
         }
+        List<Recipe> recipes = _context.Recipes
+                .Where(r => r.UserId == Uid)
+                .Include(i=>i.Ingredients)
+                .ToList()
+                .Where(r => r.Categories.Contains(cat))
+                .ToList();
+        ViewBag.Category = category;
+        ViewBag.CategoryCounts = GetCategoryCounts();
+        SetTagPickLists();
+        return View(recipes);
     }
+
     // *** view single recipe ***
-    [SessionCheck]
     [HttpGet("/recipe/{recipeId}/view")]
     public IActionResult ViewRecipe(int recipeId){
         Recipe? item = _context.Recipes
                         .Include(i => i.Ingredients)
-                        .Include(i => i.Equipment)
-                        .Include(i => i.Directions)
-                        .FirstOrDefault(i => i.ID == recipeId);
+                        .FirstOrDefault(i => i.Id == recipeId && i.UserId == Uid);
         if(item == null){
-            return RedirectToAction("Recipe");
+            return RedirectToAction("Index");
         }
         return View(item);
     }
 
-    //! Update
+    //! UPDATE
     // *** edit a recipe ***
-    [SessionCheck]
     [HttpGet("recipe/{recipeId}/edit")]
     public IActionResult EditRecipe(int recipeId){
         Recipe? item = _context.Recipes
                         .Include(i => i.Ingredients)
-                        .Include(i => i.Equipment)
-                        .Include(i => i.Directions)
-                        .FirstOrDefault(i => i.ID == recipeId);
+                        .FirstOrDefault(i => i.Id == recipeId && i.UserId == Uid);
         if(item == null){
-            return RedirectToAction("Recipe");
+            return RedirectToAction("Index");
         }
+        SetTagPickLists();
         return View(item);
     }
 
@@ -95,16 +140,28 @@ public class RecipeController : Controller
     public IActionResult UpdateRecipe(Recipe recipe, int recipeId){
         if(ModelState.IsValid){
             Recipe? item = _context.Recipes
-                            .FirstOrDefault(i => i.ID == recipeId);
-            item.Category = recipe.Category;
-            item.Name = recipe.Name;
+                            .FirstOrDefault(i => i.Id == recipeId && i.UserId == Uid);
+            // Null check replaces the previous direct dereference, which threw a
+            // 500 whenever the id was missing or belonged to someone else.
+            if(item == null){
+                return RedirectToAction("Index");
+            }
+            // Field-by-field copy on purpose: UserId and the navigation collections
+            // are deliberately never taken from the posted form.
+            item.Url = recipe.Url;
+            item.Title = recipe.Title;
+            item.Categories = recipe.Categories;
             item.Yield = recipe.Yield;
-            item.PrepHr = recipe.PrepHr;
-            item.PrepMin = recipe.PrepMin;
-            item.CookHr = recipe.CookHr;
-            item.CookMin = recipe.CookMin;
+            item.PrepTime = recipe.PrepTime;
+            item.CookTime = recipe.CookTime;
             item.Difficulty = recipe.Difficulty;
-            item.UpdatedAt = DateTime.Now;
+            item.Rating = recipe.Rating;
+            item.Calories = recipe.Calories;
+            item.Favorite = recipe.Favorite;
+            item.Directions = recipe.Directions;
+            item.Equipment = recipe.Equipment;
+            item.Tags = TagNormalizer.NormalizeList(recipe.Tags);
+            item.Cuisine = TagNormalizer.NormalizeList(recipe.Cuisine);
             _context.Recipes.Update(item);
             _context.SaveChanges();
         }
@@ -116,33 +173,35 @@ public class RecipeController : Controller
     [HttpPost("recipe/{recipeId}/delete")]
     public IActionResult DeleteRecipe(int recipeId){
         Recipe? itemToDelete = _context.Recipes
-                                .Include(i=>i.Directions)
-                                .Include(i=>i.Equipment)
                                 .Include(i=>i.Ingredients)
-                                .Include(i=>i.Meals)
-                                .SingleOrDefault(i=>i.ID == recipeId);
+                                .SingleOrDefault(i=>i.Id == recipeId && i.UserId == Uid);
         if(itemToDelete != null){
-            // delete all directions
-            foreach(Step s in itemToDelete.Directions){
-                _context.Directions.Remove(s);
-            }
-            // delete all equipment
-            foreach(Equipment e in itemToDelete.Equipment){
-                _context.Equipment.Remove(e);
-            }
             // delete all ingredients
             foreach(Ingredient i in itemToDelete.Ingredients){
                 _context.Ingredients.Remove(i);
             }
-            // delete all associated meals
-            foreach(Meal m in itemToDelete.Meals){
-                _context.Meals.Remove(m);
+            // delete all recipe links in meals, then the meals they belonged to
+            List<MealRecipe> links = _context.MealRecipes
+                                    .Where(j => j.RecipeId == recipeId)
+                                    .ToList();
+            foreach(MealRecipe link in links){
+                _context.MealRecipes.Remove(link);
+            }
+            // an emptied meal slot carries nothing, so drop those too
+            List<int> touchedMealIds = links.Select(l => l.MealId).Distinct().ToList();
+            foreach(int mealId in touchedMealIds){
+                bool anyLeft = _context.MealRecipes.Any(j => j.MealId == mealId);
+                if(!anyLeft){
+                    Meal? empty = _context.Meals.SingleOrDefault(m => m.Id == mealId);
+                    if(empty != null){
+                        _context.Meals.Remove(empty);
+                    }
+                }
             }
             // delete recipe
             _context.Recipes.Remove(itemToDelete);
             _context.SaveChanges();
         }
-        return Redirect("/recipe");
+        return Redirect("/recipes");
     }
-
 }

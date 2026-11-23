@@ -3,10 +3,9 @@
     <table class="table">
         <thead>
             <tr>
-            <th scope="col">Favorite</th>
             <th scope="col">Name</th>
+            <th scope="col">Week Of</th>
             <th scope="col">Number of Meals</th>
-            <th scope="col">Created</th>
             <th scope="col">
                 <!-- Button trigger modal -->
                 <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addMP">
@@ -18,14 +17,12 @@
         <tbody>
             @foreach(MealPlan m in Model){
             <tr>
-                @if(m.Favorite){<th scope="row">&#x26B9;</th>}
-                else{<th scope="row"></th>}
                 <td>@m.Name</td>
+                <td>@m.StartDate.ToString("MM/dd/yyyy")</td>
                 <td>@m.Meals.Count</td>
-                <td>@m.CreatedAt.ToString("MM/dd/yyyy")</td>
                 <td>
-                    <a href="mealplan/@m.ID/edit">Edit</a> |
-                    <a href="/mealplan/@m.ID/shoppingList/update">Shopping List</a>
+                    <a href="/mealplan/@m.Id/edit">Edit</a> |
+                    <a href="/mealplan/@m.Id/shoppingList/generate">Shopping List</a>
                 </td>
             </tr>
             }

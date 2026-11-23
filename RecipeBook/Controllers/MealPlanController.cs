@@ -15,99 +15,113 @@ public class MealPlanController : Controller
         _context = context;
     }
 
+    // Single place for the current user id. Every read/write below filters on it,
+    // because ids arrive from URLs and forms and cannot be trusted to be the
+    // caller's own rows.
+    private int Uid => HttpContext.Session.GetInt32("uid") ?? 0;
+
     //! CREATE
     // *** new mealplan ***
     [HttpPost("mealplan/add")]
     public IActionResult CreateMealPlan(MealPlan mp){
-        
         if(ModelState.IsValid){
+            // Owner always comes from the session, never from the posted form.
+            mp.UserId = Uid;
+            // Strip ids a caller might have posted so EF can't hijack an existing row.
+            mp.Id = 0;
+            mp.ShoppingListId = null;
             _context.MealPlans.Add(mp);
             _context.SaveChanges();
-            // return Redirect($"{mp.ID}/edit");
-            return Redirect($"/mealplan/{mp.ID}/shoppingList/create");
+            return Redirect($"/mealplan/{mp.Id}/edit");
         }
         return Redirect("/mealplan");
     }
 
     //! READ
     // *** view all meal plans ***
-    [SessionCheck]
     [HttpGet("/mealplan")]
     public IActionResult MealPlans(){
         List<MealPlan> mealPlans = _context.MealPlans
-                                    .Where(i=>i.UserID == HttpContext.Session.GetInt32("uid"))
-                                    .Include(i=>i.ShoppingList)
+                                    .Where(i=>i.UserId == Uid)
                                     .Include(i=>i.Meals)
-                                    .ThenInclude(m=>m.Recipe)
                                     .ToList();
+        // Counts for the shared right-rail section tabs (Views/Shared/_SectionTabs.cshtml).
+        ViewBag.CategoryCounts = GetCategoryCounts();
         return View(mealPlans);
     }
 
-    // *** view favorite meal plans ***
-    [SessionCheck]
-    [HttpGet("/mealplan/favs")]
-    public IActionResult MPFavorites(){
-        List<MealPlan> mealPlans = _context.MealPlans
-                                    .Where(i=>i.UserID == HttpContext.Session.GetInt32("uid"))
-                                    .Where(i=>i.Favorite == true)
-                                    .Include(i=>i.Meals)
-                                    .ThenInclude(m=>m.Recipe).ToList();
-        return View(mealPlans);
+    // Same helper RecipeController uses, duplicated here so each controller stays
+    // self-contained. Cheap: no includes.
+    private Dictionary<string, int> GetCategoryCounts()
+    {
+        int uid = Uid;
+        var counts = new Dictionary<string, int>();
+        foreach (Recipe r in _context.Recipes.Where(r => r.UserId == uid).ToList())
+        {
+            foreach (RecipeCategory c in r.Categories)
+            {
+                string key = c.ToString();
+                counts.TryGetValue(key, out int n);
+                counts[key] = n + 1;
+            }
+        }
+        return counts;
     }
 
     //! UPDATE
     // *** edit specific meal plan ***
-    [SessionCheck]
     [HttpGet("mealplan/{mealplanId}/edit")]
     public IActionResult EditMP(int mealplanId){
-        Console.WriteLine(new String('=', 20));
-        Console.WriteLine($"MADE IT TO UPDATE");
-        Console.WriteLine(new String('=', 20));
+        // Ownership is part of the lookup, not an after-the-fact check: a foreign
+        // id simply resolves to null and falls through to the list.
         MealPlan? item = _context.MealPlans
-                        .Include(i=>i.Meals)
-                        .ThenInclude(m=>m.Recipe)
-                        .FirstOrDefault(i=>i.ID == mealplanId);
+                        .Include(mp => mp.Meals)
+                            .ThenInclude(m => m.MealRecipes)
+                            .ThenInclude(j => j.Recipe)
+                        .FirstOrDefault(i=>i.Id == mealplanId && i.UserId == Uid);
         if(item == null){
             return RedirectToAction("MealPlans");
         }
+        DateOnly startDate = item.StartDate;
         MyViewModel model = new MyViewModel{
             MealPlan = item,
+            SelectedDate = startDate,
             AllRecipes = _context.Recipes
-                        .Where(i=>i.UserID == @HttpContext.Session.GetInt32("uid"))
+                        .Where(i=>i.UserId == Uid)
                         .Include(r => r.Ingredients)
                         .ToList(),
-            AllMeals = _context.Meals
-                        .Where(i=>i.MealPlanID == mealplanId)
-                        .Include(i=>i.Recipe)
-                        .ToList()
+            AllMeals = item.Meals
         };
 
-        // setting viewbags to use for meal weekday
-        ViewBag.M = 1;
-        ViewBag.T = 2;
-        ViewBag.W = 3;
-        ViewBag.Th = 4;
-        ViewBag.F = 5;
-        ViewBag.Sa = 6;
-        ViewBag.Su = 7;
+        // setting viewbags to use for the seven day columns of the grid
+        ViewBag.D0 = startDate;
+        ViewBag.D1 = startDate.AddDays(1);
+        ViewBag.D2 = startDate.AddDays(2);
+        ViewBag.D3 = startDate.AddDays(3);
+        ViewBag.D4 = startDate.AddDays(4);
+        ViewBag.D5 = startDate.AddDays(5);
+        ViewBag.D6 = startDate.AddDays(6);
 
         return View(model);
     }
 
     [HttpPost("mealplan/{mealPlanId}/update")]
     public IActionResult UpdateMP(MealPlan mp, int mealPlanId){
-        Console.WriteLine(new String('=', 20));
-        Console.WriteLine($"MADE IT TO UPDATEMP");
-        Console.WriteLine(new String('=', 20));
         if(ModelState.IsValid){
             MealPlan? item = _context.MealPlans
-                            .FirstOrDefault(i => i.ID == mealPlanId);
+                            .FirstOrDefault(i => i.Id == mealPlanId && i.UserId == Uid);
+            // Null check: the old code dereferenced this directly, so a bad or
+            // foreign id threw a 500 instead of bouncing the user out.
+            if(item == null){
+                return RedirectToAction("MealPlans");
+            }
+            // Only the two user-editable fields are copied, so a crafted post
+            // cannot move the plan to another owner or another shopping list.
             item.Name = mp.Name;
-            item.Favorite = mp.Favorite;
-            item.UpdatedAt = DateTime.Now;
+            item.StartDate = mp.StartDate;
             _context.MealPlans.Update(item);
             _context.SaveChanges();
-            return Redirect($"edit");
+            return Redirect("edit");
         }
         return RedirectToAction("MealPlans");
     }
@@ -117,25 +131,20 @@ public class MealPlanController : Controller
     public IActionResult DeleteMP(int mealPlanId){
         MealPlan? itemToDelete = _context.MealPlans
                                 .Include(i=>i.Meals)
-                                .Include(i=>i.ShoppingList)
-                                .SingleOrDefault(i=>i.ID == mealPlanId);
+                                    .ThenInclude(m => m.MealRecipes)
+                                .SingleOrDefault(i=>i.Id == mealPlanId && i.UserId == Uid);
         if(itemToDelete != null){
-            int? shoppingList = itemToDelete.ShoppingList.ID;
-            Console.WriteLine(new String('=', 20));
-            Console.WriteLine($"shoppingListID: {shoppingList}");
-            Console.WriteLine(new String('=', 20));
-            // delete meal link(s)
+            // delete the recipe links first, then the meal slots
             foreach(Meal m in itemToDelete.Meals){
+                foreach(MealRecipe link in m.MealRecipes){
+                    _context.MealRecipes.Remove(link);
+                }
                 _context.Meals.Remove(m);
             }
             // delete meal plan
             _context.MealPlans.Remove(itemToDelete);
             _context.SaveChanges();
-            // delete shopping list
-            if(shoppingList != null){
-                return Redirect($"/shoppingList/{shoppingList}/delete");
-            }
-        }       
-        return Redirect("/mealplan"); 
+        }
+        return Redirect("/mealplan");
     }
 }
