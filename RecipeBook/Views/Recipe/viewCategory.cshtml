@@ -1,68 +1,57 @@
 @{
-    switch(@ViewBag.Category){
-            case "appetizers":
-                ViewData["Title"] = "Appetizers";
-                break;
-            case "breakfast":
-                ViewData["Title"] = "Breakfast";
-                break;
-            case "soupsNstews":
-                ViewData["Title"] = "Soups and Stews";
-                break;
-            case "mainDishes":
-                ViewData["Title"] = "Main Dishes";
-                break;
-            case "sideDishes":
-                ViewData["Title"] = "Side Dishes";
-                break;
-            case "breads":
-                ViewData["Title"] = "Breads";
-                break;
-            case "desserts":
-                ViewData["Title"] = "Desserts";
-                break;
-            case "drinks":
-                ViewData["Title"] = "Drinks";
-                break;
-        }
-        @* ViewData["Title"] = "Recipes"; *@
-    
+    string cat = (string?)ViewBag.Category ?? "";
+    ViewData["Title"] = cat switch
+    {
+        "SideDish" => "Side Dishes",
+        "MainDish" => "Main Dishes",
+        _ when cat.Length > 0 => char.ToUpper(cat[0]) + cat.Substring(1),
+        _ => "Recipes"
+    };
 }
 @model List<Recipe>
 
-@await Html.PartialAsync("_RecipeNav")
+<div class="section-layout">
+    <div class="section-main">
+        <div class="mx-5 my-2 border border-secondary border-2 rounded px-4">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th scope="col">Name</th>
+                        <th scope="col">Est. Time</th>
+                        <th scope="col"># of Ingredients</th>
+                        <th scope="col">Difficulty</th>
+                        <th scope="col">
+                            <!-- Button trigger modal -->
+                            <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addRecipe">
+                                Add Recipe
+                            </button>
+                        </th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach(Recipe r in Model){
+                        <tr>
+                            <th scope="row">@r.Title</th>
+                            <td>@(r.PrepTime + r.CookTime) min</td>
+                            <td>@r.Ingredients.Count</td>
+                            <td>@r.Difficulty</td>
+                            <td>
+                                <!-- Absolute: from /recipes/{category} a relative
+                                     "@r.Id/view" resolves to /recipes/5/view, which
+                                     matches no route. -->
+                                <a href="/recipe/@r.Id/view">View</a> &ensp;|&ensp;
+                                <a href="/recipe/@r.Id/edit">Edit</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-<div class="mx-5 my-2 border border-secondary border-2 rounded px-4">
-    <table class="table">
-        <thead>
-            <tr>
-                <th scope="col">Name</th>
-                <th scope="col">Est. Time</th>
-                <th scope="col"># of Ingredients</th>
-                <th scope="col">Difficulty</th>
-                <th scope="col">
-                    <!-- Button trigger modal -->
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addRecipe">
-                        Add Recipe
-                    </button>
-                </th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach(Recipe r in Model){
-                <tr>
-                    <th scope="row">@r.Name</th>
-                    <td>@r.EstTime()</td>
-                    <td>@r.Ingredients.Count</td>
-                    <td>@r.Difficulty</td>
-                    <td>
-                        <a href="@r.ID/view">View</a> &ensp;|&ensp;
-                        <a href="@r.ID/edit">Edit</a>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <aside class="section-tabs">
+        @await Html.PartialAsync("_SectionTabs")
+    </aside>
 </div>
 
 <!-- Modal -->

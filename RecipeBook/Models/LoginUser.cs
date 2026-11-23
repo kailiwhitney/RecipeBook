@@ -7,8 +7,9 @@ namespace RecipeBook.Models;
 [NotMapped] // don't send to database
 public class LoginUser{
     [Required]
-    [Display(Name ="User Name")]
-    public string UserName {get; set;}
+    [EmailAddress(ErrorMessage = "Enter a valid email address")]
+    [Display(Name ="Email")]
+    public string Email {get; set;}
 
     [Required]
     [DataType(DataType.Password)] // auto fills input type attr

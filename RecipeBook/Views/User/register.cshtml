@@ -1,38 +1,43 @@
 
 @model User
-<div class="text-center">
-    <h1>We would love to add your Recipe Book to our Shelves!</h1>
+<div class="auth-card">
+    <h1 class="text-center mb-3">We would love to add your Recipe Book to our Shelves!</h1>
     <form action="register" method="post">
-        <div class="form-group row p-1">
-            <label asp-for="FamilyName" class="col-sm-2 col-form-label">Family Name: </label>
-            <input asp-for="FamilyName" class="col-sm-5">
-            <span asp-validation-for="FamilyName"></span>
+        <div class="field">
+            <label asp-for="FirstName">First Name</label>
+            <input asp-for="FirstName" autocomplete="given-name" required>
+            <span asp-validation-for="FirstName"></span>
         </div>
-        <div class="form-group row p-1">
-            <label asp-for="UserName" class="col-sm-2 col-form-label">User Name: </label>
-            <input asp-for="UserName" class="col-sm-5">
-            <span asp-validation-for="UserName"></span>
+        <div class="field">
+            <label asp-for="LastName">Family Name</label>
+            <input asp-for="LastName" autocomplete="family-name" required>
+            <span asp-validation-for="LastName"></span>
         </div>
-        <div class="form-group row p-1">
-            <label asp-for="Email" class="col-sm-2 col-form-label">Email: </label>
-            <input asp-for="Email" class="col-sm-5">
+        <div class="field">
+            <label asp-for="Username">Username</label>
+            <input asp-for="Username" autocomplete="username" required>
+            <span asp-validation-for="Username"></span>
+        </div>
+        <div class="field">
+            <label asp-for="Email">Email</label>
+            <input asp-for="Email" type="email" autocomplete="email" required>
             <span asp-validation-for="Email"></span>
         </div>
-        <div class="form-group row p-1">
-            <label asp-for="PhoneNumber" class="col-sm-2 col-form-label">Phone Number: </label>
-            <input asp-for="PhoneNumber" class="col-sm-5">
+        <div class="field">
+            <label asp-for="PhoneNumber">Phone Number (optional)</label>
+            <input asp-for="PhoneNumber" type="tel" autocomplete="tel">
             <span asp-validation-for="PhoneNumber"></span>
         </div>
-        <div class="form-group row p-1">
-            <label asp-for="Password" class="col-sm-2 col-form-label">Password: </label>
-            <input asp-for="Password" class="col-sm-5">
+        <div class="field">
+            <label asp-for="Password">Password</label>
+            <input asp-for="Password" type="password" autocomplete="new-password" required>
             <span asp-validation-for="Password"></span>
         </div>
-        <div class="form-group row p-1">
-            <label asp-for="ConfirmPW" class="col-sm-2 col-form-label">PW Confirm: </label>
-            <input asp-for="ConfirmPW" class="col-sm-5">
+        <div class="field">
+            <label asp-for="ConfirmPW">Password Confirm</label>
+            <input asp-for="ConfirmPW" type="password" autocomplete="new-password" required>
             <span asp-validation-for="ConfirmPW"></span>
         </div>
-        <button>Register</button>
+        <button class="btn btn-primary mt-2">Register</button>
     </form>
 </div>

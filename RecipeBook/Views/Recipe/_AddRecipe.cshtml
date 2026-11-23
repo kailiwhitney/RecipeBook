@@ -1,56 +1,67 @@
 @* @model Recipe *@
 
 <div class="modal-header">
-    <h5 class="modal-title" id="exampleModalLongTitle">Add to the @Context.Session.GetString("FamilyName") Family Cookbook</h5>
+    <h5 class="modal-title" id="exampleModalLongTitle">Add a New Recipe</h5>
 </div>
-<form action="add" method="post" class="row g-3">
+<!-- Absolute on purpose: this modal is hosted both at /recipes and at
+     /recipes/{category}, and a relative "add" would resolve to /add or
+     /recipes/add from those two URLs, neither of which is the POST route. -->
+<form action="/recipe/add" method="post" class="row g-3">
     <div class="modal-body mx-3 d-flex flex-column">
         <!-- User ID -->
         <input name="UserID" value=@Context.Session.GetInt32("uid") hidden>
-        <!-- Category -->
-        <input name="Category" value=@ViewBag.Category hidden>
-        <!-- Name -->
+        <!-- Pre-select the section this was opened from; editable on the next page. -->
+        @if (!string.IsNullOrEmpty((string?)ViewBag.Category))
+        {
+            <input type="checkbox" name="Categories" value="@ViewBag.Category" checked hidden>
+        }
+        <!-- Title -->
         <div class="col">
-            <label for="Name" class="form-label">Recipe Name</label>
-            <input type="text" class="form-control" name="Name" minlength="2" required>
+            <label for="Title" class="form-label">Recipe Name</label>
+            <input type="text" class="form-control" name="Title" minlength="2" required>
+        </div>
+        <!-- Url -->
+        <div class="col">
+            <label for="Url" class="form-label">Source URL</label>
+            <input type="url" class="form-control" name="Url">
         </div>
         <div class="row">
             <!-- Yield -->
             <div class="col-md-4">
                 <label for="Yield" class="form-label">Yield</label>
-                <input type="text" class="form-control" name="Yield" minlength="2" required>
+                <input type="number" step="any" class="form-control" name="Yield" required>
             </div>
-            <!-- Difficult -->
+            <!-- Difficulty -->
             <div class="col-md-5">
-                <label for="Difficulty" class="form-label">Difficulty</label>
-                <select class="form-select" name="Difficulty" required>
-                    <option selected disabled value="">-- select --</option>
-                    <option value="Easy">Easy</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Hard">Hard</option>
-                </select>
+                <label for="Difficulty" class="form-label">Difficulty (1-5)</label>
+                <input type="number" class="form-control" name="Difficulty" min="1" max="5" value="1" required>
+            </div>
+            <!-- Calories -->
+            <div class="col-md-3">
+                <label for="Calories" class="form-label">Calories</label>
+                <input type="number" class="form-control" name="Calories" min="0" value="0">
             </div>
         </div>
         <div class="col">
             <div class="col-md-2">
-                <label>Prep. Time</label>
-                    <!-- PrepHr -->
-                    <input type="number" class="form-control" name="PrepHr" min="1">
-                    <label for="PrepHr" class="form-label">hr</label>
-                    <!-- PrepMin -->
-                    <input type="number" class="form-control" name="PrepMin" min="0" required>
-                    <label for="PrepMin" class="form-label">min</label>
+                <label>Prep. Time (min)</label>
+                <!-- PrepTime -->
+                <input type="number" class="form-control" name="PrepTime" min="0" required>
             </div>
             <div class="col-md-2">
-                <label>Cook Time</label>
-                <!-- CookHr -->
-                <input type="number" class="form-control" name="CookHr" min="1">
-                <label for="CookHr" class="form-label">hr</label>
-                <!-- PrepMin -->
-                <input type="number" class="form-control" name="CookMin" min="0" required>
-                <label for="CookMin" class="form-label">min</label>
+                <label>Cook Time (min)</label>
+                <!-- CookTime -->
+                <input type="number" class="form-control" name="CookTime" min="0" required>
             </div>
         </div>
+
+        <!-- Tags / Cuisine: user-extensible "dynamic enums". Reuse existing
+             values from the badges, or type a new one. camping == Camping. -->
+        @{ ViewData["Field"] = "Tags"; ViewData["All"] = (List<string>)(ViewBag.AllTags ?? new List<string>()); }
+        @await Html.PartialAsync("_TagPicker", new List<string>())
+
+        @{ ViewData["Field"] = "Cuisine"; ViewData["All"] = (List<string>)(ViewBag.AllCuisine ?? new List<string>()); }
+        @await Html.PartialAsync("_TagPicker", new List<string>())
     </div>
     <div class="modal-footer col-12">
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -58,6 +69,5 @@
         <button type="submit" class="btn btn-primary">Next Step</button>
     </div>
 </form>
-
 
 

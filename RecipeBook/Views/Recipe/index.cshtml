@@ -1,0 +1,76 @@
+@{
+    ViewData["Title"] = "Recipes";
+    string family = Context.Session.GetString("FamilyName") ?? "Your";
+}
+@model MyViewModel
+
+@* Book cover: the styled landing header (formerly Views/Home/dashboard.cshtml).
+   Placed here because "/" and "/recipes" now render this view; the standalone
+   dashboard was orphaned by the routing cleanup. *@
+<div class="book-cover">
+    <div class="cover-inner">
+        <p class="cover-eyebrow">Your Family Kitchen &middot; @family Recipes</p>
+        <h1 class="cover-title">@family<br>Recipe Book</h1>
+        <div class="cover-rule"></div>
+        <p class="cover-sub">Good food, well kept.</p>
+
+        <div class="cover-stats">
+            <div><span>@ViewBag.RecipeCount</span>recipes</div>
+            <div><span>@ViewBag.FavoriteCount</span>favorites</div>
+            <div><span>@ViewBag.MealPlanCount</span>meal plans</div>
+        </div>
+    </div>
+
+    @await Html.PartialAsync("_SectionTabs")
+</div>
+
+<h2 class="border-bottom my-3">All Recipes</h2>
+<div class="mx-5 my-2 border border-secondary border-2 rounded px-4">
+    <table class="table">
+        <thead>
+            <tr>
+                <th scope="col">Name</th>
+                <th scope="col">Est. Time</th>
+                <th scope="col"># of Ingredients</th>
+                <th scope="col">Difficulty</th>
+                <th scope="col">
+                    <!-- Button trigger modal -->
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#addRecipe">
+                        Add Recipe
+                    </button>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach(Recipe r in Model.AllRecipes){
+                <tr>
+                    <th scope="row">@r.Title</th>
+                    <td>@(r.PrepTime + r.CookTime) min</td>
+                    <td>@r.Ingredients.Count</td>
+                    <td>@r.Difficulty</td>
+                    <td>
+                        <!-- Absolute on purpose. A relative "@r.Id/view" resolves
+                             against the current URL's directory, which from
+                             "/recipes" is just "/", giving "/5/view" (no route). -->
+                        <a href="/recipe/@r.Id/view">View</a> &ensp;|&ensp;
+                        <a href="/recipe/@r.Id/edit">Edit</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
+
+@if ((int)ViewBag.RecipeCount == 0)
+{
+    <p class="cover-hint">The shelves are bare. Start with a recipe you already know by heart.</p>
+}
+
+<!-- Modal -->
+<div class="modal fade" id="addRecipe" tabindex="-1" role="dialog" aria-labelledby="addRecipeTitle" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            @await Html.PartialAsync("_AddRecipe")
+        </div>
+    </div>
+</div>

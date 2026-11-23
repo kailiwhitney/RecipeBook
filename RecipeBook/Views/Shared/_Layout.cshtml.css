@@ -1,43 +1,30 @@
-﻿/* Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
-for details on configuring this project to bundle and minify static web assets. */
+/* Scoped layout styles — dark theme. These are emitted into RecipeBook.styles.css,
+   which loads AFTER site.css, so unscoped rules here override site.css.
+   Keep these values in sync with wwwroot/css/site.css. */
 
-a.navbar-brand {
-  white-space: normal;
-  text-align: center;
-  word-break: break-all;
-}
+a.navbar-brand { white-space: normal; text-align: center; word-break: break-all; }
 
-a {
-  color: #0077cc;
-}
+a { color: #46c58a; }
+a:hover { color: #6fdcae; }
 
 .btn-primary {
-  color: #fff;
-  background-color: #1b6ec2;
-  border-color: #1861ac;
+  color: #08130d !important;
+  background-color: #46c58a;
+  border-color: #46c58a;
 }
 
 .nav-pills .nav-link.active, .nav-pills .show > .nav-link {
-  color: #fff;
-  background-color: #1b6ec2;
-  border-color: #1861ac;
+  color: #08130d;
+  background-color: #46c58a;
+  border-color: #46c58a;
 }
 
-.border-top {
-  border-top: 1px solid #e5e5e5;
-}
-.border-bottom {
-  border-bottom: 1px solid #e5e5e5;
-}
+.border-top { border-top: 1px solid #2b343d; }
+.border-bottom { border-bottom: 1px solid #2b343d; }
 
-.box-shadow {
-  box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .05);
-}
+.box-shadow { box-shadow: 0 .25rem .75rem rgba(0, 0, 0, .4); }
 
-button.accept-policy {
-  font-size: 1rem;
-  line-height: inherit;
-}
+button.accept-policy { font-size: 1rem; line-height: inherit; }
 
 .footer {
   position: absolute;
@@ -45,4 +32,5 @@ button.accept-policy {
   width: 100%;
   white-space: nowrap;
   line-height: 60px;
+  color: #8fa0ae;
 }

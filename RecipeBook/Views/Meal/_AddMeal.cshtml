@@ -1,356 +1,85 @@
 @model MyViewModel
+@{
+    // The slot this picker fills comes from the page that opened it. Note the
+    // recipe list is NOT filtered by this type: a meal slot is Breakfast/Lunch/...
+    // while recipes are filed under RecipeCategory (MainDish, Soup, ...). Those are
+    // different vocabularies, so filtering one by the other would hide most recipes.
+    MealType slotType = (MealType)(ViewData["MealType"] ?? MealType.Dinner);
+    DateOnly slotDate = Model.SelectedDate;
+    int planId = Model.MealPlan?.Id ?? 0;
+
+    // Recipes already in this exact slot, so its button can read "Added".
+    int? slotMealId = Model.AllMeals
+        .Where(m => m.Date == slotDate && m.Type == slotType)
+        .Select(m => (int?)m.Id)
+        .FirstOrDefault();
+    HashSet<int> alreadyAdded = slotMealId == null
+        ? new HashSet<int>()
+        : new HashSet<int>(Model.AllMeals
+            .First(m => m.Id == slotMealId.Value)
+            .MealRecipes.Select(j => j.RecipeId));
+
+    // Group the picker by the recipe's own section for browsability.
+    RecipeCategory[] sections = Enum.GetValues<RecipeCategory>();
+}
 <div id="accordion">
-    <div class="card">
-        <div class="card-header" id="headingOne">
-        <h5 class="mb-0">
-            <button class="btn collapsed" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-            Appetizers
-            </button>
-        </h5>
-        </div>
-        <div id="collapseOne" class="collapse" aria-labelledby="headingOne" data-bs-parent="#accordion">
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Est. Time</th>
-                        <th scope="col"># of Ingredients</th>
-                        <th scope="col">Difficulty</th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        @foreach(Recipe r in Model.AllRecipes){
-                            if(@r.Category == "appetizers"){
-                                <th scope="row">@r.Name</th>
-                                <td>@r.EstTime()</td>
-                                <td>@r.Ingredients.Count</td>
-                                <td>@r.Difficulty</td>
-                                <td>
-                                    <form action="/meal/addMeal" method="post">
-                                        <input name="Meal.Weekday" value="@Model.DoW" hidden>
-                                        <input name="Meal.MealPlanID" value="@Model.MealPlan.ID" hidden>
-                                        <input name="Meal.RecipeID" value="@r.ID" hidden>
-                                        <button class="btn btn-dark">Select</button>
-                                    </form>
-                                </td>
+    @for (int s = 0; s < sections.Length; s++)
+    {
+        // 'section' is a reserved Razor directive, so this loop variable must not
+        // be named section (that raised RZ1015).
+        RecipeCategory catSection = sections[s];
+        <div class="card">
+            <div class="card-header" id="heading@(s + 1)">
+                <h5 class="mb-0">
+                    <button class="btn collapsed" data-bs-toggle="collapse" data-bs-target="#collapse@(s + 1)" aria-expanded="false" aria-controls="collapse@(s + 1)">
+                        @catSection
+                    </button>
+                </h5>
+            </div>
+            <div id="collapse@(s + 1)" class="collapse" aria-labelledby="heading@(s + 1)" data-bs-parent="#accordion">
+                <div class="card-body">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Name</th>
+                                <th scope="col">Est. Time</th>
+                                <th scope="col"># of Ingredients</th>
+                                <th scope="col">Difficulty</th>
+                                <th scope="col">Calories</th>
+                                <th scope="col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (Recipe r in Model.AllRecipes.Where(r => r.Categories.Contains(catSection)))
+                            {
+                                <tr>
+                                    <th scope="row">@r.Title</th>
+                                    <td>@(r.PrepTime + r.CookTime) min</td>
+                                    <td>@r.Ingredients.Count</td>
+                                    <td>@r.Difficulty</td>
+                                    <td>@r.Calories</td>
+                                    <td>
+                                        @if (alreadyAdded.Contains(r.Id))
+                                        {
+                                            <span class="badge bg-secondary">Added</span>
+                                        }
+                                        else
+                                        {
+                                            <form action="/meal/@planId/add" method="post">
+                                                <input name="date" value="@slotDate.ToString("yyyy-MM-dd")" hidden>
+                                                <input name="type" value="@slotType" hidden>
+                                                <input name="recipeId" value="@r.Id" hidden>
+                                                <button class="btn btn-dark">Select</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
                             }
-                        }
-                    </tr>
-                    </tbody>
-            </table>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header" id="headingTwo">
-        <h5 class="mb-0">
-            <button class="btn collapsed" data-bs-toggle="collapse" data-bs-target="#collapseTwo" aria-expanded="false" aria-controls="collapseTwo">
-            Breakfast
-            </button>
-        </h5>
-        </div>
-        <div id="collapseTwo" class="collapse" aria-labelledby="headingTwo" data-bs-parent="#accordion">
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Est. Time</th>
-                        <th scope="col"># of Ingredients</th>
-                        <th scope="col">Difficulty</th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        @foreach(Recipe r in Model.AllRecipes){
-                            if(@r.Category == "breakfast"){
-                                <th scope="row">@r.Name</th>
-                                <td>@r.EstTime()</td>
-                                <td>@r.Ingredients.Count</td>
-                                <td>@r.Difficulty</td>
-                                <td>
-                                    <form action="/meal/addMeal" method="post">
-                                        <input name="Meal.Weekday" value="@Model.DoW" hidden>
-                                        <input name="Meal.MealPlanID" value="@Model.MealPlan.ID" hidden>
-                                        <input name="Meal.RecipeID" value="@r.ID" hidden>
-                                        <button class="btn btn-dark">Select</button>
-                                    </form>
-                                </td>
-                            }
-                        }
-                    </tr>
-                    </tbody>
-            </table>
-        </div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header" id="headingThree">
-        <h5 class="mb-0">
-            <button class="btn collapsed" data-bs-toggle="collapse" data-bs-target="#collapseThree" aria-expanded="false" aria-controls="collapseThree">
-            Soups and Stews
-            </button>
-        </h5>
-        </div>
-        <div id="collapseThree" class="collapse" aria-labelledby="headingThree" data-bs-parent="#accordion">
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Est. Time</th>
-                        <th scope="col"># of Ingredients</th>
-                        <th scope="col">Difficulty</th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        @foreach(Recipe r in Model.AllRecipes){
-                            if(@r.Category == "soupsNstews"){
-                                <th scope="row">@r.Name</th>
-                                <td>@r.EstTime()</td>
-                                <td>@r.Ingredients.Count</td>
-                                <td>@r.Difficulty</td>
-                                <td>
-                                    <form action="/meal/addMeal" method="post">
-                                        <input name="Meal.Weekday" value="@Model.DoW" hidden>
-                                        <input name="Meal.MealPlanID" value="@Model.MealPlan.ID" hidden>
-                                        <input name="Meal.RecipeID" value="@r.ID" hidden>
-                                        <button class="btn btn-dark">Select</button>
-                                    </form>
-                                </td>
-                            }
-                        }
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header" id="headingFour">
-        <h5 class="mb-0">
-            <button class="btn collapsed" data-bs-toggle="collapse" data-bs-target="#collapseFour" aria-expanded="false" aria-controls="collapseFour">
-            Main Dishes
-            </button>
-        </h5>
-        </div>
-        <div id="collapseFour" class="collapse" aria-labelledby="headingFour" data-bs-parent="#accordion">
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Est. Time</th>
-                        <th scope="col"># of Ingredients</th>
-                        <th scope="col">Difficulty</th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        @foreach(Recipe r in Model.AllRecipes){
-                            if(@r.Category == "mainDishes"){
-                                <th scope="row">@r.Name</th>
-                                <td>@r.EstTime()</td>
-                                <td>@r.Ingredients.Count</td>
-                                <td>@r.Difficulty</td>
-                                <td>
-                                    <form action="/meal/addMeal" method="post">
-                                        <input name="Meal.Weekday" value="@Model.DoW" hidden>
-                                        <input name="Meal.MealPlanID" value="@Model.MealPlan.ID" hidden>
-                                        <input name="Meal.RecipeID" value="@r.ID" hidden>
-                                        <button class="btn btn-dark">Select</button>
-                                    </form>
-                                </td>
-                            }
-                        }
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header" id="headingFive">
-        <h5 class="mb-0">
-            <button class="btn collapsed" data-bs-toggle="collapse" data-bs-target="#collapseFive" aria-expanded="false" aria-controls="collapseFive">
-            Side Dishes
-            </button>
-        </h5>
-        </div>
-        <div id="collapseFive" class="collapse" aria-labelledby="headingFive" data-bs-parent="#accordion">
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Est. Time</th>
-                        <th scope="col"># of Ingredients</th>
-                        <th scope="col">Difficulty</th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        @foreach(Recipe r in Model.AllRecipes){
-                            if(@r.Category == "sideDishes"){
-                                <th scope="row">@r.Name</th>
-                                <td>@r.EstTime()</td>
-                                <td>@r.Ingredients.Count</td>
-                                <td>@r.Difficulty</td>
-                                <td>
-                                    <form action="/meal/addMeal" method="post">
-                                        <input name="Meal.Weekday" value="@Model.DoW" hidden>
-                                        <input name="Meal.MealPlanID" value="@Model.MealPlan.ID" hidden>
-                                        <input name="Meal.RecipeID" value="@r.ID" hidden>
-                                        <button class="btn btn-dark">Select</button>
-                                    </form>
-                                </td>
-                            }
-                        }
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header" id="headingSix">
-        <h5 class="mb-0">
-            <button class="btn collapsed" data-bs-toggle="collapse" data-bs-target="#collapseSix" aria-expanded="false" aria-controls="collapseSix">
-            Breads
-            </button>
-        </h5>
-        </div>
-        <div id="collapseSix" class="collapse" aria-labelledby="headingSix" data-bs-parent="#accordion">
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Est. Time</th>
-                        <th scope="col"># of Ingredients</th>
-                        <th scope="col">Difficulty</th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        @foreach(Recipe r in Model.AllRecipes){
-                            if(@r.Category == "breads"){
-                                <th scope="row">@r.Name</th>
-                                <td>@r.EstTime()</td>
-                                <td>@r.Ingredients.Count</td>
-                                <td>@r.Difficulty</td>
-                                <td>
-                                    <form action="/meal/addMeal" method="post">
-                                        <input name="Meal.Weekday" value="@Model.DoW" hidden>
-                                        <input name="Meal.MealPlanID" value="@Model.MealPlan.ID" hidden>
-                                        <input name="Meal.RecipeID" value="@r.ID" hidden>
-                                        <button class="btn btn-dark">Select</button>
-                                    </form>
-                                </td>
-                            }
-                        }
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header" id="headingSeven">
-        <h5 class="mb-0">
-            <button class="btn collapsed" data-bs-toggle="collapse" data-bs-target="#collapseSeven" aria-expanded="false" aria-controls="collapseSeven">
-            Desserts
-            </button>
-        </h5>
-        </div>
-        <div id="collapseSeven" class="collapse" aria-labelledby="headingSeven" data-bs-parent="#accordion">
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Est. Time</th>
-                        <th scope="col"># of Ingredients</th>
-                        <th scope="col">Difficulty</th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        @foreach(Recipe r in Model.AllRecipes){
-                            if(@r.Category == "desserts"){
-                                <th scope="row">@r.Name</th>
-                                <td>@r.EstTime()</td>
-                                <td>@r.Ingredients.Count</td>
-                                <td>@r.Difficulty</td>
-                                <td>
-                                    <form action="/meal/addMeal" method="post">
-                                        <input name="Meal.Weekday" value="@Model.DoW" hidden>
-                                        <input name="Meal.MealPlanID" value="@Model.MealPlan.ID" hidden>
-                                        <input name="Meal.RecipeID" value="@r.ID" hidden>
-                                        <button class="btn btn-dark">Select</button>
-                                    </form>
-                                </td>
-                            }
-                        }
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </div>
-    </div>
-    <div class="card">
-        <div class="card-header" id="headingEight">
-        <h5 class="mb-0">
-            <button class="btn collapsed" data-bs-toggle="collapse" data-bs-target="#collapseEight" aria-expanded="false" aria-controls="collapseEight">
-            Drinks
-            </button>
-        </h5>
-        </div>
-        <div id="collapseEight" class="collapse" aria-labelledby="headingEight" data-bs-parent="#accordion">
-        <div class="card-body">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th scope="col">Name</th>
-                        <th scope="col">Est. Time</th>
-                        <th scope="col"># of Ingredients</th>
-                        <th scope="col">Difficulty</th>
-                        <th scope="col"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        @foreach(Recipe r in Model.AllRecipes){
-                            if(@r.Category == "drinks"){
-                                <th scope="row">@r.Name</th>
-                                <td>@r.EstTime()</td>
-                                <td>@r.Ingredients.Count</td>
-                                <td>@r.Difficulty</td>
-                                <td>
-                                    <form action="/meal/addMeal" method="post">
-                                        <input name="Meal.Weekday" value="@Model.DoW" hidden>
-                                        <input name="Meal.MealPlanID" value="@Model.MealPlan.ID" hidden>
-                                        <input name="Meal.RecipeID" value="@r.ID" hidden>
-                                        <button class="btn btn-dark">Select</button>
-                                    </form>
-                                </td>
-                            }
-                        }
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-        </div>
-    </div>
+    }
     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
 </div>
